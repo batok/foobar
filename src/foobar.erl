@@ -86,7 +86,7 @@ request_1(ConnPid) ->
    end,
    io:format("request_1 end~n",[]).
 
-build_headers(<<"0">>) ->
+build_headers([H | _]) when H == "0" ->
   io:format("Empty headers~n", []),
   [];
 
@@ -95,9 +95,11 @@ build_headers(ContentType) ->
   [{<<"content-type">>, ContentType}].
 
 request_2(ConnPid, Timeout, ContentType, What) ->
-   HDRS = build_headers(ContentType),
-   %% StreamRef = gun:get(ConnPid, What, HDRS),
-   StreamRef = gun:get(ConnPid, What),
+   StreamRef =
+     case build_headers(ContentType) of
+       [] ->  gun:get(ConnPid, What);
+       HDRS -> gun:get(ConnPid, What, HDRS)
+     end,
    
    MRef = monitor(process, ConnPid),
    receive
