@@ -18,8 +18,17 @@ main([Url| [Tout | ContentType]] = Args) ->
     Response = request_2(ConnPid, Timeout, ContentType, What),
     io:format("~s~n", [Response]),
     response(Response, true),
+    stats(Response), 
+    io:format("Custom Body if needed ~n~s~n", [custom_body()]),
     %% request_1(ConnPid),
     erlang:halt(0).
+
+custom_body() ->
+   Body = 
+      #{
+         foo => <<"bar">>
+      },
+   jsx:encode(Body).
 
 response([], _JustLength) -> io:format("Finish~n", []);
 
@@ -29,6 +38,11 @@ response([Part | State], JustLength) ->
      true -> io:format("~9..0B~n", [byte_size(Part)])
    end,
    response(State, JustLength).
+
+stats(Response) ->
+   Size = lists:foldl(fun(X, Sum) -> Sum + byte_size(X) end, 0, Response),
+   Elements = length(Response),
+   io:format("Size: ~9..0B Elements: ~9..0B~n", [Size, Elements]).
 
 prepare(Url) ->
    [Host | After] = binary:split(binary:list_to_bin(Url), <<"/">>),
@@ -50,6 +64,7 @@ prepare(Url) ->
    io:format("After2 is ~s~n", [After2]),
    
    application:ensure_all_started(gun),
+   application:ensure_all_started(jsx),
    Host2 = binary:bin_to_list(Host),
    
    {ok, ConnPid} = gun:open(Host2, 443),
@@ -81,9 +96,9 @@ build_headers(ContentType) ->
 
 request_2(ConnPid, Timeout, ContentType, What) ->
    HDRS = build_headers(ContentType),
-   StreamRef = gun:get(ConnPid, What, HDRS),
+   %% StreamRef = gun:get(ConnPid, What, HDRS),
+   StreamRef = gun:get(ConnPid, What),
    
-   %% StreamRef = gun:get(ConnPid, "/", build_headers(ContentType)),
    MRef = monitor(process, ConnPid),
    receive
         {gun_response, ConnPid, StreamRef, fin, Status, Headers} ->
