@@ -10,8 +10,6 @@
 %% escript Entry point
 main([Url| [Tout | ContentType]] = Args) ->
     io:format("Args: ~p~n", [Args]),
-    %%[Host | Args2] = Args,
-    %%[Tout | _] = Args2,
     Timeout = binary_to_integer(list_to_binary(Tout)),
     {ConnPid, What} = prepare(Url),
     io:format("What is ~s~n", [What]),
@@ -19,16 +17,41 @@ main([Url| [Tout | ContentType]] = Args) ->
     io:format("~s~n", [Response]),
     response(Response, true),
     stats(Response), 
-    io:format("Custom Body if needed ~n~s~n", [custom_body()]),
+    io:format("Custom Body if needed), ~n~s~n", [custom_body()]),
+    %% Pids = lists:map(fun(X) -> spawn(?MODULE, request_2, [ConnPid, Timeout, ContentType, What]) end, lists:seq(1,3)),
+    %% Self = self(),
+    %% io:format("self() ~p~n", [Self]),
+    %% _Pids = lists:map(fun(X) -> spawn(?MODULE, display, [Self, <<"Hello">>]) end, lists:seq(1,3)),
+    %% listen(),
     %% request_1(ConnPid),
     erlang:halt(0).
+
+listen() ->
+   receive
+     {display, Message} ->
+	io:format("Received~n", []),
+	listen();
+     {gun_error, _, _, _} = What ->
+	io:format("Unknown ~p~n", [What]),
+	listen();
+     What ->
+	listen()
+   end.
+
+display(Pid, Message) -> 
+   io:format("Message ~s~n", [Message]),
+   Pid ! {display, <<"done">>}.
 
 custom_body() ->
    Body = 
       #{
          foo => <<"bar">>
       },
-   jsx:encode(Body).
+   case Body of
+     B when is_map(B) -> jsx:encode(Body);
+     _ -> ""
+   end.
+   
 
 response([], _JustLength) -> io:format("Finish~n", []);
 
@@ -64,7 +87,6 @@ prepare(Url) ->
    io:format("After2 is ~s~n", [After2]),
    
    application:ensure_all_started(gun),
-   application:ensure_all_started(jsx),
    Host2 = binary:bin_to_list(Host),
    
    {ok, ConnPid} = gun:open(Host2, 443),
