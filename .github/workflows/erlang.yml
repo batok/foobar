@@ -19,6 +19,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Compile
       run: rebar3 compile
+    - name: Scriptize
+      run: rebar3 escriptize
     - name: Run tests
       run: rebar3 do eunit, ct
     
